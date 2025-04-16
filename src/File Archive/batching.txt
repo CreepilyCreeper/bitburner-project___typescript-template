@@ -1,0 +1,93 @@
+//sort according to money generated
+//money rate = hack_threads * hackPercent * ns.getServerMaxMoney * hackChance / hackTime(or weakTime or growTime)
+
+//hackPercent = (100 - server.hackDifficulty)/100 * (player.skills.hacking - server.requiredHackingSkill + 1)/player.skills.hacking * BitnodeMults / 240
+
+//skillChance = (Math.max(1.75 * player.skills.hacking) - server.requiredHackingSkill) / Math.max(1.75 * player.skills.hacking, 1)
+//hackChance = skillChance * (100 - server.hackDifficulty)/100 * player.mults.hacking_chance * playerIntelligenceBonus
+//skillFactor = 2.5 * (server.requiredHackingSkill * server.hackDifficulty + 500) / (player.skills.hacking + 50)
+//hackTime = 5 * skillFactor / player.mults.hacking_speed / BitnodeMults / playerIntelligenceBonus
+//playerIntelligenceBonus = 1 + (1 * Math.pow(ns.getPlayer().skills.intelligence, 0.8)) / 600
+
+//server.hackDifficulty_increase = 0.002 * Math.min(threads, maxThreadNeeded)
+//maxThreadNeeded = Math.ceil(1 / hackPercent)
+
+
+
+//growTime = hackTime * 3.2
+//weakTime = hackTime * 4
+
+//factors affecting money generated: server.hackDifficulty(weaken), player.skills.hacking, server.requiredHackingSkill
+//let money_rate = (100 - server.hackDifficulty)/100 * (player.skills.hacking - server.requiredHackingSkill + 1)/player.skills.hacking / 240 * server.moneyMax * (Math.max(1.75 * player.skills.hacking, 1) - server.requiredHackingSkill) / Math.max(1.75 * player.skills.hacking) * (100 - server.hackDifficulty)/100 / (5 * 2.5) / (server.requiredHackingSkill * server.hackDifficulty + 500) * (player.skills.hacking + 50) * hack_threads * player.mults.hacking_speed * BitnodeMults.HackingSpeedMultiplier * playerIntelligenceBonus * BitnodeMults.ScriptHackMoney
+
+//ns.getPlayer().mults.hacking_speed
+//ns.getServer().requiredHackingSkill
+
+
+//might want to account for effectiveness of weak and grow from cores
+//grow rate = grow_amount / growTime
+//grow_amount = (server.moneyAvailable + grow_threads) * growPercent - server.moneyAvailable
+//server.moneyMax = (server.moneyMax - hack_amount + grow_threads) * growPercent
+//growPercent = Math.exp(adjGrowthLog * grow_threads * server.serverGrowth/100 * BitNodeMultipliers.ServerGrowthRate * player.mults.hacking_grow * coreBonus)
+//adjGrowthLog = Math.min(Math.log(1 + 0.03/server.hackDifficulty), 0.00349388925425578(when hackDifficulty > 8.5))
+//coreBonus = 1+(cores-1)/16)
+//growTime = hackTime * 3.2
+
+
+//            //          Growing increases server security twice as much as hacking
+//server.hackDifficulty_increase_grow = 2 * 0.002 * Math.min(grow_threads, formulas.growThreads)
+
+//weak rate = weakAmount / weakTime
+//weakAmount = 0.05 * weak_threads * coreBonus * BitNodeMultipliers.ServerWeakenRate
+//new_server.hackDifficulty = server.hackDifficulty - 0.05 * threads * coreBonus * BitNodeMultipliers.ServerWeakenRate
+//weakTime = hackTime * 4
+
+/*
+batch composition calculation
+hack_amount = hack_threads * (hackPercent * server.moneyMax)
+server.moneyMax = (server.moneyMax - hack_amount + grow_threads) * growPercent
+grow_threads = server.moneyMax / growPercent - server.moneyMax + hack_amount
+assume server.moneyMax = (server.moneyMax - hack_amount) * Math.exp(Math.log(1 + 0.03/server.hackDifficulty) * grow_threads * server.serverGrowth/100 * BitNodeMultipliers.ServerGrowthRate * player.mults.hacking_grow * coreBonus)
+
+
+
+server.hackDifficulty_increase_hack = 0.002 * Math.min(threads, Math.ceil(1 / hackPercent))
+weak1_amount >= server.hackDifficulty_increase_hack
+weak1_amount = 0.05 * weak1_threads * coreBonus * BitNodeMultipliers.ServerWeakenRate
+weak2_amount >= server.hackDifficulty_increase_grow
+weak2_amount = 0.05 * weak2_threads * coreBonus * BitNodeMultipliers.ServerWeakenRate
+
+-------------------------------------------------
+maxThreads = constant = hack_threads + grow_threads + weak1_threads + weak2_threads
+
+grow_threads = Math.log(1/(1-hack_threads))
+
+weak1_threads = server.hackDifficulty_increase_hack / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate
+server.hackDifficulty_increase_hack = 0.002 * hack_threads
+weak1_threads = 0.002 * hack_threads / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate
+
+weak2_threads = server.hackDifficulty_increase_grow / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate
+server.hackDifficulty_increase_grow = 2 * 0.002 * grow_threads
+weak2_threads = 2 * 0.002 * grow_threads / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate
+
+maxThreads = hack_threads + Math.ceil(hack_amount / growPercent - (server.moneyMax - hack_amount)) + 0.002 * hack_threads / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate + 2 * 0.002 * (Math.ceil(hack_amount / growPercent - (server.moneyMax - hack_amount))) / 0.05 / coreBonus / BitNodeMultipliers.ServerWeakenRate
+
+check ipad, there is no good solution to calculate batch composition other than looping
+variables that affect a server's money rate: server.maxMoney(up), server.serverGrowth(up), server.minDifficulty(down)
+
+*/
+
+//sorting method depends on batching method
+//in general, too small batch will not use full ram, too large batch will not use full time
+//get largest batch that does not use full ram, sort based on that
+//if continuous, calculate number of batches from weakTime + delta*3    (use the time between batches to get how many parallel batches there are)
+//if non-continuous, calculate number of batches from hackTime/4/delta
+
+//new sorting method
+//1: server.maxMoney / server.minDifficulty * s.serverGrowth
+//2: server.maxMoney / server.minDifficulty
+
+
+
+
+
